@@ -1,0 +1,31 @@
+package api
+
+import (
+	"net/http"
+	"phone-number-manager/logging"
+	"go.uber.org/zap"
+	"go.opentelemetry.io/otel"
+)
+
+// LoggingMiddleware adds structured request logs.
+func LoggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log := logging.L().With(
+			zap.String("method", r.Method),
+			zap.String("url", r.URL.String()),
+			zap.String("request_id", r.Header.Get("X-Request-ID")),
+		)
+		log.Info("Incoming request")
+		next.ServeHTTP(w, r)
+	})
+}
+
+// TracingMiddleware adds distributed tracing to requests.
+func TracingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tracer := otel.Tracer("phone-number-manager")
+		ctx, span := tracer.Start(r.Context(), r.URL.Path)
+		defer span.End()
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
