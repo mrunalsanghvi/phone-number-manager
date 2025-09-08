@@ -1,0 +1,10 @@
+memory:
+  type: memory # options: memory, mongo
+mongo:
+  uri: mongodb://localhost:27017
+  database: phonebookdb
+  collection: phonebook
+server:
+  port: 8080
+logging:
+  level: info # options: debug, info, warn, error
