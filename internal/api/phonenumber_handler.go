@@ -2,12 +2,14 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"phone-number-manager/internal/errors"
+	logger "phone-number-manager/internal/logging"
 	"phone-number-manager/internal/models"
 	"phone-number-manager/internal/service"
 	"phone-number-manager/internal/validation"
+
+	"go.uber.org/zap"
 )
 
 type PhoneBookHandler struct {
@@ -25,12 +27,15 @@ func (h *PhoneBookHandler) CreatePhoneNumberHandler(w http.ResponseWriter, r *ht
 	req := models.PhoneBook{
 		PhoneNumber: r.URL.Query().Get("phoneNumber"),
 	}
-	fmt.Println("Received phone number:", req.PhoneNumber)
+	logger.Log.Info("Received phone number:", zap.String("phoneNumber", req.PhoneNumber))
 	if err := validation.ValidateStruct(&req); err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		errors.WriteAPIError(w, errors.New(http.StatusBadRequest, "Invalid request", err.Error()))
 		return
 	}
+	
+	req.PhoneNumber = addPlusIfNotAlready(req.PhoneNumber)
+
 	num, err := validation.ValidateE164Phone(req.PhoneNumber)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
@@ -46,4 +51,11 @@ func (h *PhoneBookHandler) CreatePhoneNumberHandler(w http.ResponseWriter, r *ht
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(201)
 	json.NewEncoder(w).Encode(req)
+}
+
+func addPlusIfNotAlready(phoneNumber string) string {
+	if len(phoneNumber) > 0 && phoneNumber[0] != '+' {
+		return "+" + phoneNumber
+	}
+	return phoneNumber
 }
